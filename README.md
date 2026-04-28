@@ -56,12 +56,12 @@
 </summary>
 
 - JMETER 
-  - before: ~42000 ms
+  - before: ~42049 ms
     ![Test Plan 1 CL image](/assets/images/cl_test_plan_1.png)
-  - after: ~230 ms
+  - after: ~237 ms
     ![Test Plan 1 CL After_image](/assets/images/cl_test_plan_1_after.png)
   - summary:
-    Sebelum optimasi, rata-rata response time endpoint /all-student di JMeter adalah sekitar 42000 ms (42 detik). Setelah optimasi, turun drastis menjadi sekitar 230 ms. Selisihnya adalah sekitar 41770 ms dengan improvement sebesar ~99%.
+    Sebelum optimasi, rata-rata response time endpoint /all-student di JMeter adalah sekitar 42049 ms (42 detik). Setelah optimasi, turun drastis menjadi sekitar 237 ms. Selisihnya adalah sekitar 41812 ms dengan improvement sebesar ~99.4%.
 
 - Intellij Profiler (CPU Time `getAllStudentsWithCourses`)
   - before: 9576 ms
@@ -84,12 +84,12 @@
 </summary>
 
 - JMETER
-  - before: ~1000 ms
+  - before: ~1033 ms
     ![Test Plan 2 CL image](/assets/images/cl_test_plan_2.png)
   - after: ~25 ms
     ![Test Plan 2 CL After_image](/assets/images/cl_test_plan_2_after.png)
   - summary:
-    Sebelum optimasi, rata-rata response time endpoint /all-student-name di JMeter adalah sekitar 1000 ms. Setelah optimasi, turun drastis menjadi sekitar 25 ms. Selisihnya adalah sekitar 975 ms dengan improvement sebesar ~97%.
+    Sebelum optimasi, rata-rata response time endpoint /all-student-name di JMeter adalah sekitar 1033 ms. Setelah optimasi, turun drastis menjadi sekitar 25 ms. Selisihnya adalah sekitar 1008 ms dengan improvement sebesar ~97.6%.
 
 - Intellij Profiler (CPU Time `joinStudentNames`)
   - before: 422 ms
@@ -102,6 +102,34 @@
     Dari hasil profiling, CPU time method `joinStudentNames` sebelum optimasi adalah 422 ms, dan setelah optimasi turun menjadi 50 ms. Selisihnya adalah 372 ms dengan improvement sebesar ~88.2%, sesuai dengan yang terlihat di comparison view.
 
 - Masalahnya ada di method `joinStudentNames` yang melakukan string concatenation menggunakan `+=` di dalam loop. Setiap operasi `+=` pada String di Java itu membuat object String baru di memory, jadi dengan 20.000 student ada 20.000 object String yang dibuat. Selain itu, kode lama juga mengambil seluruh object Student padahal yang dibutuhkan hanya nama saja. Solusinya adalah query langsung ambil kolom `name` saja dari database pakai `@Query`, lalu hasilnya digabung pakai `String.join()` yang lebih efisien karena tidak membuat object String baru berkali-kali. Setelah itu, method di service nya juga tinggal panggil method repository yang baru tanpa perlu logic looping lagi.
+
+</details>
+
+<details>
+
+<summary>
+<b>Endpoint /highest-gpa</b>
+</summary>
+
+- JMETER
+  - before: ~67 ms
+    ![Test Plan 3 CL image](/assets/images/cl_test_plan_3.png)
+  - after: ~10 ms
+    ![Test Plan 3 CL After_image](/assets/images/cl_test_plan_3_after.png)
+  - summary:
+    Sebelum optimasi, rata-rata response time endpoint /highest-gpa di JMeter adalah sekitar 67 ms. Setelah optimasi, turun menjadi sekitar 10 ms. Selisihnya adalah sekitar 57 ms dengan improvement sebesar ~85%.
+
+- Intellij Profiler (CPU Time `findStudentWithHighestGpa`)
+  - before: 130 ms
+    ![Profiling_highest-gpa_Before_image](/assets/images/profiling_highest-gpa.png)
+  - after: 50 ms
+    ![Profiling_highest-gpa_After_image](/assets/images/profiling_highest-gpa_after.png)
+  - comparison: 80 ms
+    ![Profiling_highest-gpa_Comparison_image](/assets/images/profiling_highest-gpa_comparison.png)
+  - summary:
+    Dari hasil profiling, CPU time method `findStudentWithHighestGpa` sebelum optimasi adalah 130 ms, dan setelah optimasi turun menjadi 50 ms. Selisihnya adalah 80 ms dengan improvement sebesar ~61.5%, sesuai dengan yang terlihat di comparison view.
+
+- Masalahnya ada di method `findStudentWithHighestGpa` yang ambil semua 20.000 data student dari database hanya untuk mencari 1 student dengan GPA tertinggi. Logika pencariannya dilakukan di Java dengan loop satu per satu, padahal database jauh lebih efisien untuk urusan sorting dan filtering. Solusinya adalah mendelegasikan pencarian langsung ke database menggunakan konvensi JPA `findTopByOrderByGpaDesc`, yang artinya database langsung mengurutkan berdasarkan GPA secara descending dan mengembalikan hanya 1 data teratas. Setelah itu, method di service-nya juga tinggal panggil method repository yang baru tanpa perlu logic looping lagi.
 
 </details>
 
